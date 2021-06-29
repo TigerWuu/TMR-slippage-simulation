@@ -31,12 +31,12 @@ thetar = np.arctan2(vyr,vxr)
 omegar = b*a*np.ones(time_step)
 
 
-# with open('theta_reference.csv','ab') as f:
-#     np.savetxt(f, thetar, delimiter="")
-# with open('x_reference.csv','ab') as f:
-#     np.savetxt(f, xr, delimiter="")
-# with open('y_reference.csv','ab') as f:
-#     np.savetxt(f, yr, delimiter="")
+with open('theta_reference.csv','ab') as f:
+    np.savetxt(f, thetar, delimiter="")
+with open('x_reference.csv','ab') as f:
+    np.savetxt(f, xr, delimiter="")
+with open('y_reference.csv','ab') as f:
+    np.savetxt(f, yr, delimiter="")
 
 
 ### real trajecotory
@@ -87,7 +87,7 @@ k3 = 0
 # y0 = 0
 # theta0 = 0
 
-x0 = -0.1
+x0 = 0.1
 y0 = -0.1
 theta0 = 1/4*np.pi
 
@@ -170,12 +170,12 @@ for i in range(time_step):
     vy[i] = 1/2*(np.sin(theta[i])*wl[i]+ np.sin(theta[i])*wr[i])
     v[i] = (vx[i]**2 + vy[i]**2)**0.5
 
-# with open('theta_without_com.csv','ab') as f:
-#     np.savetxt(f, theta, delimiter="")
-# with open('x_without_com.csv','ab') as f:
-#     np.savetxt(f, x, delimiter="")
-# with open('y_without_com.csv','ab') as f:
-#     np.savetxt(f, y, delimiter="")
+with open('theta_without_com.csv','ab') as f:
+    np.savetxt(f, theta, delimiter="")
+with open('x_without_com.csv','ab') as f:
+    np.savetxt(f, x, delimiter="")
+with open('y_without_com.csv','ab') as f:
+    np.savetxt(f, y, delimiter="")
 ### load the Network
 slippage = keras.models.load_model("slippage_predict")
 
@@ -260,20 +260,20 @@ for i in range(time_step):
 
     vxp[i] = 1/2*(np.cos(thetap[i])*wlp[i]+ np.cos(thetap[i])*wrp[i])
     vyp[i] = 1/2*(np.sin(thetap[i])*wlp[i]+ np.sin(thetap[i])*wrp[i])
-# with open('slippage_com_s1.csv','ab') as f:
-#     np.savetxt(f, s1, delimiter="")
-# with open('slippage_com_s2.csv','ab') as f:
-#     np.savetxt(f, s2, delimiter="")
-# with open('slippage_com_s1p.csv','ab') as f:
-#     np.savetxt(f, s1p, delimiter="")
-# with open('slippage_com_s2p.csv','ab') as f:
-#     np.savetxt(f, s2p, delimiter="")
-# with open('theta_with_com.csv','ab') as f:
-#     np.savetxt(f, thetap, delimiter="")
-# with open('x_with_com.csv','ab') as f:
-#     np.savetxt(f, xp, delimiter="")
-# with open('y_with_com.csv','ab') as f:
-#     np.savetxt(f, yp, delimiter="")
+with open('slippage_com_s1.csv','ab') as f:
+    np.savetxt(f, s1, delimiter="")
+with open('slippage_com_s2.csv','ab') as f:
+    np.savetxt(f, s2, delimiter="")
+with open('slippage_com_s1p.csv','ab') as f:
+    np.savetxt(f, s1p, delimiter="")
+with open('slippage_com_s2p.csv','ab') as f:
+    np.savetxt(f, s2p, delimiter="")
+with open('theta_with_com.csv','ab') as f:
+    np.savetxt(f, thetap, delimiter="")
+with open('x_with_com.csv','ab') as f:
+    np.savetxt(f, xp, delimiter="")
+with open('y_with_com.csv','ab') as f:
+    np.savetxt(f, yp, delimiter="")
 
 xpo = np.zeros(time_step)
 ypo = np.zeros(time_step)
@@ -368,20 +368,20 @@ for i in range(time_step):
     vxp[i] = 1/2*(np.cos(thetap[i])*wlp[i]+ np.cos(thetap[i])*wrp[i])
     vyp[i] = 1/2*(np.sin(thetap[i])*wlp[i]+ np.sin(thetap[i])*wrp[i])
 
-# with open('slippage_online_s1.csv','ab') as f:
-#     np.savetxt(f, s1, delimiter="")
-# with open('slippage_online_s2.csv','ab') as f:
-#     np.savetxt(f, s2, delimiter="")
-# with open('slippage_online_s1p.csv','ab') as f:
-#     np.savetxt(f, s1p, delimiter="")
-# with open('slippage_online_s2p.csv','ab') as f:
-#     np.savetxt(f, s2p, delimiter="")
-# with open('theta_with_online.csv','ab') as f:
-#     np.savetxt(f, thetap, delimiter="")
-# with open('x_with_online.csv','ab') as f:
-#     np.savetxt(f, xpo, delimiter="")
-# with open('y_with_online.csv','ab') as f:
-#     np.savetxt(f, ypo, delimiter="")
+with open('slippage_online_s1.csv','ab') as f:
+    np.savetxt(f, s1, delimiter="")
+with open('slippage_online_s2.csv','ab') as f:
+    np.savetxt(f, s2, delimiter="")
+with open('slippage_online_s1p.csv','ab') as f:
+    np.savetxt(f, s1p, delimiter="")
+with open('slippage_online_s2p.csv','ab') as f:
+    np.savetxt(f, s2p, delimiter="")
+with open('theta_with_online.csv','ab') as f:
+    np.savetxt(f, thetap, delimiter="")
+with open('x_with_online.csv','ab') as f:
+    np.savetxt(f, xpo, delimiter="")
+with open('y_with_online.csv','ab') as f:
+    np.savetxt(f, ypo, delimiter="")
 
 def anima(i):
     car.set_data(x[0:i],y[0:i])
@@ -391,7 +391,7 @@ def anima(i):
     car_com_main.set_data(xp[i],yp[i])
     car_com_online_main.set_data(xpo[i],ypo[i])
 
-    return  car, car_com, car_main, car_com_main,
+    return  car, car_com, car_com_online, car_main, car_com_main, car_com_online_main
 
 if __name__ == "__main__":
     ###　plot the simulation result

@@ -12,6 +12,7 @@ time_step = 200
 L = 20
 
 ### reference trajectory
+t = np.arange(time_step) 
 # xr = 0.01*t 
 # yr = 0.5*np.sin(3*xr) + xr
 # vxr = 0.01*np.ones(time_step)
@@ -19,7 +20,7 @@ L = 20
 # vr = (vxr**2 + vyr **2)**0.5
 # thetar = np.arctan2(vyr,vxr)
 # omegar = -0.045*np.sin(3*xr)/(2.25*(np.cos(3*xr))**2+3*np.cos(3*xr)+2)
-t = np.arange(time_step) 
+
 xr = 0.01*t 
 yr = (0.01*t) ** 2
 vxr = 0.01*np.ones(time_step)
@@ -88,7 +89,6 @@ for i in range(time_step):
         e1[i] = xr[i] - x[i-1]
         e2[i] = yr[i] - y[i-1]
         e3[i] = thetar[i] - theta[i-1]
-
 
     k1 = 2 * (omegar[i]**2 + 14*vr[i]**2)**0.5
     k2 = 14*np.abs(vr[i])
@@ -285,17 +285,17 @@ if __name__ == "__main__":
     # plt.plot(thetap, color = 'red')
     # plt.title("theta")
     # plt.figure()
-    plt.plot(s1, color = 'darkblue')
-    plt.plot(s2, color = 'cyan')
-    plt.plot(s1p, color = 'darkgreen')
-    plt.plot(s2p, color = 'lime')
-    plt.ylim(-1,1)
-    plt.legend(['slippage left', 'slippage right', 'slippage left predict' ,'slippage right predict'], loc='upper left')
-    plt.title("slippage ratio")
-    plt.figure()
-    plt.plot(s1-s1p, color = 'darkblue')
-    plt.plot(s2-s2p, color = 'darkgreen')
-    plt.ylim(-1,1)
-    plt.legend(['slippage left error', 'slippage right error'], loc='upper left')
-    plt.title("slippage ratio error")
+    # plt.plot(s1, color = 'darkblue')
+    # plt.plot(s2, color = 'cyan')
+    # plt.plot(s1p, color = 'darkgreen')
+    # plt.plot(s2p, color = 'lime')
+    # plt.ylim(-1,1)
+    # plt.legend(['slippage left', 'slippage right', 'slippage left predict' ,'slippage right predict'], loc='upper left')
+    # plt.title("slippage ratio")
+    # plt.figure()
+    # plt.plot(s1-s1p, color = 'darkblue')
+    # plt.plot(s2-s2p, color = 'darkgreen')
+    # plt.ylim(-1,1)
+    # plt.legend(['slippage left error', 'slippage right error'], loc='upper left')
+    # plt.title("slippage ratio error")
     plt.show()

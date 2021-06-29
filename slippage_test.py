@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 from tensorflow import keras
 import matplotlib.animation as animation
 
-
 """ 
 -------------------------
 Author : Jing-Shiang Wuu
@@ -23,17 +22,19 @@ Instruction:
     There are four trajectory simulation ,saparately:
         # reference trajectory
         # trajectory without slippage compensation
-        # trajectory with slippage compensation
-        # trajectory with slippage compensation online learning
+        # trajectory with slippage compensation offline
+        # trajectory with slippage compensation online
 
     you have to run "slippage _train.py" first to get the NN model "slippage_predict"
     
-    ra can be changed to modified the slippage when the time reach the time_step/3
+    "ra" can be changed to modified the slippage when the time reach the time_step/3
         # ra = 1 ---> slippage remains
         # ra > 1 ---> slippage = slippage * ra
+
+    "online" can switch the training status
+        # online = True ---> online & offline
+        # online = False ---> offline only
 """
-
-
 
 ### simulation step
 time_step = 200
@@ -97,13 +98,15 @@ k3 = 0
 
 ### initial condition
 
-x0 = -0.1
+x0 = 0.1
 y0 = -0.1
 theta0 = 1/4*np.pi
 
 ### slippage changes ratio
-ra = 1
+ra = 1.3
 
+### online/offline
+online = True
 
 ### without slippage compensation
 for i in range(time_step):
@@ -275,87 +278,88 @@ s1o = np.zeros(time_step)
 s2o = np.zeros(time_step)
 
 ### with slippage compensation online
-for i in range(time_step):
-    if i == 0:
-        s1po[i] = 0
-        s2po[i] = 0
-        e1[i] = xr[i] - xpo[i]
-        e2[i] = yr[i] - ypo[i]
-        e3[i] = thetar[i] - thetap[i]
-    else:
-        
-        x_online = [[wrr[i-1],wlr[i-1],wrr_dot[i-1],wlr_dot[i-1],wrp[i-1],wlp[i-1]]]
-        y_online = [[s1[i-1],s2[i-1]]]
-        slippage.fit(x_online , y_online , epochs=3 ,batch_size = 1)
-        sp = slippage.predict(x_online) 
-        s1po[i] = sp[0][0]
-        s2po[i] = sp[0][1]
-        e1[i] = xr[i] - xpo[i-1]
-        e2[i] = yr[i] - ypo[i-1]
-        e3[i] = thetar[i] - thetap[i-1]
-
-    k1 = 2 * (omegar[i]**2 + 14*vr[i]**2)**0.5
-    k2 = 14*np.abs(vr[i])
-    k3 = k1
-
-    ### state feedback & feedforward controller
-    vc[i] = vr[i]*np.cos(e3[i]) + k1*e1[i]
-    omegac[i] = omegar[i] + k2*np.sign(vr[i])*e2[i] + k3*e3[i]
-
-    ###　inverse kinematic
-    wlr[i] = vc[i]*(1/(1-s1po[i])) - omegac[i]*L/(2*(1-s1po[i]))
-    wrr[i] = vc[i]*(1/(1-s2po[i])) + omegac[i]*L/(2*(1-s2po[i]))
-
-    # slippage ratio empirical equation
-    alpha_b = -0.15
-    beta_b = -0.63
-    alpha_s = 0.07
-    beta_s = -0.68
-
-    if wlr[i] >= wrr[i]:
-        R =  0.5*L*(wlr[i]+wrr[i])/(wlr[i]-wrr[i])
-        alphal = alpha_b
-        betal = beta_b
-        alphar = alpha_s
-        betar = beta_s
-    else:
-        R =  0.5*L*(wlr[i]+wrr[i])/(wrr[i]-wlr[i])
-        alphal = alpha_s
-        betal = beta_s
-        alphar = alpha_b
-        betar = beta_b
-    if R>0:
-        if i < time_step/3:
-            s1o[i] = alphal*np.exp(betal*R)
-            s2o[i] = alphar*np.exp(betar*R)
+if online == True:
+    for i in range(time_step):
+        if i == 0:
+            s1po[i] = 0
+            s2po[i] = 0
+            e1[i] = xr[i] - xpo[i]
+            e2[i] = yr[i] - ypo[i]
+            e3[i] = thetar[i] - thetap[i]
         else:
-            s1o[i] = ra*alphal*np.exp(betal*R)
-            s2o[i] = ra*alphar*np.exp(betar*R)
-    else:
-        s1[i] = 0
-        s2[i] = 0
+            
+            x_online = [[wrr[i-1],wlr[i-1],wrr_dot[i-1],wlr_dot[i-1],wrp[i-1],wlp[i-1]]]
+            y_online = [[s1[i-1],s2[i-1]]]
+            slippage.fit(x_online , y_online , epochs=3 ,batch_size = 1)
+            sp = slippage.predict(x_online) 
+            s1po[i] = sp[0][0]
+            s2po[i] = sp[0][1]
+            e1[i] = xr[i] - xpo[i-1]
+            e2[i] = yr[i] - ypo[i-1]
+            e3[i] = thetar[i] - thetap[i-1]
 
-    ### forward kinematic
-    wlp[i] = wlr[i]*(1-s1o[i])
-    wrp[i] = wrr[i]*(1-s2o[i])
-    omegap[i] = 1/L*wrp[i] - 1/L*wlp[i] 
+        k1 = 2 * (omegar[i]**2 + 14*vr[i]**2)**0.5
+        k2 = 14*np.abs(vr[i])
+        k3 = k1
 
-    if i == 0:
-        wrr_dot[i] = wrr[i]
-        wlr_dot[i] = wlr[i]
-        xpo[0] = x0
-        ypo[0] = y0
-        thetap[0] =theta0
-    else:
-        wrr_dot[i] = wrr[i] - wrr[i-1]
-        wlr_dot[i] = wlr[i] - wlr[i-1]
+        ### state feedback & feedforward controller
+        vc[i] = vr[i]*np.cos(e3[i]) + k1*e1[i]
+        omegac[i] = omegar[i] + k2*np.sign(vr[i])*e2[i] + k3*e3[i]
 
-        xpo[i] += xpo[i-1] + vxp[i-1]
-        ypo[i] += ypo[i-1] + vyp[i-1] 
-        thetap[i] = thetap[i-1] + omegap[i]
+        ###　inverse kinematic
+        wlr[i] = vc[i]*(1/(1-s1po[i])) - omegac[i]*L/(2*(1-s1po[i]))
+        wrr[i] = vc[i]*(1/(1-s2po[i])) + omegac[i]*L/(2*(1-s2po[i]))
 
-    vxp[i] = 1/2*(np.cos(thetap[i])*wlp[i]+ np.cos(thetap[i])*wrp[i])
-    vyp[i] = 1/2*(np.sin(thetap[i])*wlp[i]+ np.sin(thetap[i])*wrp[i])
+        # slippage ratio empirical equation
+        alpha_b = -0.15
+        beta_b = -0.63
+        alpha_s = 0.07
+        beta_s = -0.68
+
+        if wlr[i] >= wrr[i]:
+            R =  0.5*L*(wlr[i]+wrr[i])/(wlr[i]-wrr[i])
+            alphal = alpha_b
+            betal = beta_b
+            alphar = alpha_s
+            betar = beta_s
+        else:
+            R =  0.5*L*(wlr[i]+wrr[i])/(wrr[i]-wlr[i])
+            alphal = alpha_s
+            betal = beta_s
+            alphar = alpha_b
+            betar = beta_b
+        if R>0:
+            if i < time_step/3:
+                s1o[i] = alphal*np.exp(betal*R)
+                s2o[i] = alphar*np.exp(betar*R)
+            else:
+                s1o[i] = ra*alphal*np.exp(betal*R)
+                s2o[i] = ra*alphar*np.exp(betar*R)
+        else:
+            s1[i] = 0
+            s2[i] = 0
+
+        ### forward kinematic
+        wlp[i] = wlr[i]*(1-s1o[i])
+        wrp[i] = wrr[i]*(1-s2o[i])
+        omegap[i] = 1/L*wrp[i] - 1/L*wlp[i] 
+
+        if i == 0:
+            wrr_dot[i] = wrr[i]
+            wlr_dot[i] = wlr[i]
+            xpo[0] = x0
+            ypo[0] = y0
+            thetap[0] =theta0
+        else:
+            wrr_dot[i] = wrr[i] - wrr[i-1]
+            wlr_dot[i] = wlr[i] - wlr[i-1]
+
+            xpo[i] += xpo[i-1] + vxp[i-1]
+            ypo[i] += ypo[i-1] + vyp[i-1] 
+            thetap[i] = thetap[i-1] + omegap[i]
+
+        vxp[i] = 1/2*(np.cos(thetap[i])*wlp[i]+ np.cos(thetap[i])*wrp[i])
+        vyp[i] = 1/2*(np.sin(thetap[i])*wlp[i]+ np.sin(thetap[i])*wrp[i])
 
 # plt.plot(s1-s1p, color = 'blue')
 # plt.plot(s2-s2p, color = 'green')
@@ -376,7 +380,7 @@ def anima(i):
     car_main.set_data(x[i],y[i])
     car_com.set_data(xp[0:i],yp[0:i])
     car_com_main.set_data(xp[i],yp[i])
-    if ra != 0:
+    if online == True:
         car_com_online.set_data(xpo[0:i],ypo[0:i])
         car_com_online_main.set_data(xpo[i],ypo[i])
         return  car, car_com, car_com_online, car_main, car_com_main, car_com_online_main
@@ -389,29 +393,43 @@ if __name__ == "__main__":
     fig = plt.figure(figsize=(6, 6), dpi=100)
     ax = fig.gca()
     # ra != 0 -> material changes
-    if ra != 0:
+    if ra != 1:
         reference_concrete, = ax.plot(xr[:int(N/3)], yr[:int(N/3)], color='blue', linestyle='-', linewidth=2)
-        reference_mud, = ax.plot(xr[int(N/3):N], yr[int(N/3):N], color='blue', linestyle='-.', linewidth=2)
-        car_com_online, = ax.plot([], [], color='green',linestyle='--', linewidth=1)
-        car_com_online_main, = ax.plot([], [], color='green', marker='o', markersize=10, markeredgecolor='red', linestyle='')
+        reference_soil, = ax.plot(xr[int(N/3):N], yr[int(N/3):N], color='blue', linestyle='-.', linewidth=2)
     else:
         reference, = ax.plot(xr, yr, color='blue', linestyle='-', linewidth=2)
-        car, = ax.plot([], [], color='orange',linestyle='--', linewidth=1)
-        car_main, = ax.plot([], [], color='orange', marker='o', markersize=10, markeredgecolor='red', linestyle='')
-        car_com, = ax.plot([], [], color='red',linestyle='--', linewidth=1)
-        car_com_main, = ax.plot([], [], color='red', marker='o', markersize=10, markeredgecolor='red', linestyle='')
-        
+
+    car, = ax.plot([], [], color='orange',linestyle='--', linewidth=1)
+    car_main, = ax.plot([], [], color='orange', marker='o', markersize=10, markeredgecolor='red', linestyle='')
+    car_com, = ax.plot([], [], color='red',linestyle='--', linewidth=1)
+    car_com_main, = ax.plot([], [], color='red', marker='o', markersize=10, markeredgecolor='red', linestyle='')
+    if online == True:
+        car_com_online, = ax.plot([], [], color='green',linestyle='--', linewidth=1)
+        car_com_online_main, = ax.plot([], [], color='green', marker='o', markersize=10, markeredgecolor='red', linestyle='')
+    
     ax.set_xlabel('x', fontsize=14)
     ax.set_ylabel('y', fontsize=14)
     ###　plot the simulation result
-    ani = animation.FuncAnimation(fig=fig, func=anima, frames=N, interval=0.1, blit=True, repeat=True)
+    ani = animation.FuncAnimation(fig=fig, func=anima, frames=N, interval=0.1, blit=True, repeat=False)
     plt.xlim(-0.5,2)
     plt.ylim(-0.5,2.5)
     plt.title("Tracking Result")
-    if ra != 0:
-        plt.legend([reference_concrete, reference_mud, car, car_com, car_com_online,], ['Desired trajectory concrete', 'Desired trajectory mud', 'Trajectory without slip com', 'Trajectory slip com' , 'Trajectory slip com online' ], loc='upper left')
+    if online == True:
+        if ra != 1:
+            plt.legend([reference_concrete, reference_soil, car, car_com, car_com_online,], ['Desired trajectory concrete', 'Desired trajectory soil', 'Trajectory without slip com', 'Trajectory slip com offline' , 'Trajectory slip com online' ], loc='upper left')
+            # save gif
+            ani.save('Tracking compare ra online.gif', writer='imagemagick', fps=50)
+        else:
+            plt.legend([reference, car, car_com, car_com_online,], ['Desired trajectory concrete', 'Trajectory without slip com', 'Trajectory slip com offline', 'Trajectory slip com online' ], loc='upper left')
+            # save gif    
+            ani.save('Tracking compare online.gif', writer='imagemagick', fps=50)
     else:
-        plt.legend([reference, car, car_com, car_com_online,], ['Desired trajectory concrete', 'Trajectory without slip com', 'Trajectory slip com', 'Trajectory slip com online' ], loc='upper left')
-    # save gif    
-    # ani.save('Tracking compare.gif', writer='imagemagick', fps=50)
+        if ra != 1:
+            plt.legend([reference_concrete, reference_soil, car, car_com, ], ['Desired trajectory concrete', 'Desired trajectory soil', 'Trajectory without slip com', 'Trajectory slip com offline' ], loc='upper left')
+            # save gif
+            ani.save('Tracking compare ra.gif', writer='imagemagick', fps=50)
+        else:
+            plt.legend([reference, car, car_com, ], ['Desired trajectory concrete', 'Trajectory without slip com', 'Trajectory slip com offline'], loc='upper left')
+            # save gif    
+            ani.save('Tracking compare.gif', writer='imagemagick', fps=50)
     plt.show()
