@@ -9,7 +9,7 @@ This is a simulation of TMR robot system with slippage compensation
   - [slippage train](#slippage-train.py)
   - [slippage test](#slippage-test.py)
 ## Introduction
-
+We make the robot track the trajectory we desired while the influence of the slippage will bring to a bad result. We want to compensate the loss of the wheel speed caused by the slippage and find out the solution by adpative slippage estimation and neural network slippage prediction. This is a demostrate of the NN slippage prediction method.
 
 ## Installation
 - Clone the package .
