@@ -3,16 +3,24 @@ This is a simulation of TMR robot system with slippage compensation
 
 
 ## Contents
-- [Installation](#installation)
+- [Installation](#installatio)
+- [Usage]
 - [slippage train](#slippage-train)
 - [slippage test](#slippage-test)
 
 ## installation
-* CLone the package 
-'''
+- Clone the package .
 
-'''
-## slappige train
+      git clone https://github.com/TigerWuu/TMR-slippage-simulation.git
+      
+- package
+
+  download with pip(recommand) or conda
+  
+      pip install tensorfow
+      pip install matplotlib 
+      
+## slippage train
 
 
 ## slippage test
