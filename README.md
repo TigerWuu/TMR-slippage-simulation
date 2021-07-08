@@ -5,8 +5,8 @@ This is a simulation of TMR robot system with slippage compensation
 ## Contents
 - [Installation](#Installatio)
 - [Usage](#Usage)
-  - [slippage train](#slippage-train)
-  - [slippage test](#slippage-test)
+  - [slippage train](##slippage-train)
+  - [slippage test](##slippage-test)
 
 ## Installation
 - Clone the package .
@@ -19,6 +19,7 @@ This is a simulation of TMR robot system with slippage compensation
   
       pip install tensorfow
       pip install matplotlib 
+      
 ## Usage
 - first, run "slippage_train.py" to get the NN model "slippage_predict"
  
