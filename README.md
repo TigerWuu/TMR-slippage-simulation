@@ -8,8 +8,10 @@ This is a simulation of TMR robot system with slippage compensation
 - [slippage test](#slippage-test)
 
 ## installation
+* CLone the package 
+'''
 
-
+'''
 ## slappige train
 
 
