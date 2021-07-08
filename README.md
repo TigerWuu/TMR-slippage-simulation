@@ -6,8 +6,9 @@ This is a simulation of TMR robot system with slippage compensation
 - [Introduction](#Introduction)
 - [Installation](#Installation)
 - [Usage](#Usage)
-  - [slippage train](#slippage-train.py)
-  - [slippage test](#slippage-test.py)
+  - [slippage train.py](#slippage-train.py)
+  - [slippage test.py](#slippage-test.py)
+  - [DNN.py](#DNN.py)
 ## Introduction
 We make the robot track the trajectory we desired while the influence of the slippage will bring to a bad result. We want to compensate the loss of the wheel speed caused by the slippage and find out the solution by adpative slippage estimation and neural network slippage prediction. This is a demostrate of the NN slippage prediction method.
 
@@ -48,3 +49,11 @@ We make the robot track the trajectory we desired while the influence of the sli
 
       # online = True ---> online & offline
       # online = False ---> offline only
+      
+### DNN.py
+NN model with
+
+    activation function : sigmoid
+    optimizer : GD
+
+~~functional~~
