@@ -3,7 +3,7 @@ This is a simulation of TMR robot system with slippage compensation
 
 
 ## Contents
-- [Installation](instal)
+- [Installation](#installation)
 - [slippage train](#slippage-train)
 - [slippage test](#slippage-test)
 
