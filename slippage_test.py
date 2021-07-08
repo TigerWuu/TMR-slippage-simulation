@@ -19,19 +19,19 @@ Description:
     prediction. This is a demostrate of the NN slippage prediction method.
 
 Instruction:
-    There are four trajectory simulation ,saparately:
+    1. There are four trajectory simulation ,saparately:
         # reference trajectory
         # trajectory without slippage compensation
         # trajectory with slippage compensation offline
         # trajectory with slippage compensation online
 
-    you have to run "slippage _train.py" first to get the NN model "slippage_predict"
+    2. you have to run "slippage _train.py" first to get the NN model "slippage_predict"
     
-    "ra" can be changed to modified the slippage when the time reach the time_step/3
+    3. "ra" can be changed to modified the slippage when the time reach the time_step/3
         # ra = 1 ---> slippage remains
         # ra > 1 ---> slippage = slippage * ra
 
-    "online" can switch the training status
+    4. "online" can switch the training status
         # online = True ---> online & offline
         # online = False ---> offline only
 """
