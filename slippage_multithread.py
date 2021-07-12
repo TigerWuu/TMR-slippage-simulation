@@ -39,6 +39,11 @@ Instruction:
     4. "online" can switch the training status
         # online = True ---> online & offline
         # online = False ---> offline only
+
+    5. Multithread.
+       # multithread = True : about 43s
+       # multithread = False : about 50s  
+         
 """
 
 ### simulation step
@@ -150,6 +155,10 @@ ra = 1.3
 ### online/offline
 online = True
 
+### multithread on/off
+multithread = True
+
+
 ### load the Network
 def load_network():
     slippage = keras.models.load_model("slippage_predict")
@@ -157,7 +166,7 @@ def load_network():
 
 ### slippage ratio empirical equation
 def slippage_empirical(lv,rv,i):
-    global time_step,ra
+    global time_step, ra
     alpha_b = -0.15
     beta_b = -0.63
     alpha_s = 0.07
@@ -378,16 +387,21 @@ def anima(i):
 if __name__ == "__main__":
     # run simulation
     sta = time.time()
-    thread = []
-    thread.append(threading.Thread(target = without_compensation))
-    thread.append(threading.Thread(target = with_compensation))
-    thread.append(threading.Thread(target = with_compensation_online))
 
-    for i in thread:
-        i.start()
-    for i in thread:
-        i.join()
-
+    # multithread on/off
+    if multithread == True:
+        thread = []
+        thread.append(threading.Thread(target = without_compensation))
+        thread.append(threading.Thread(target = with_compensation))
+        thread.append(threading.Thread(target = with_compensation_online))
+        for i in thread:
+            i.start()
+        for i in thread:
+            i.join()
+    else:
+        without_compensation()
+        with_compensation()
+        with_compensation_online()
     finish = time.time()
     print("time = ",finish-sta)
 

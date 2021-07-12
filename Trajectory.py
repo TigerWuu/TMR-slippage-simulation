@@ -1,6 +1,18 @@
 import numpy as np
 
+""" 
+-------------------------
+Author : Jing-Shiang Wuu
+Date : 2021/7/12
+Institution : National Taiwan University 
+Department : Bio-Mechatronics Engineering
+Status : Senior
+-------------------------
 
+Description:
+    Generate the trajectory 
+
+"""
 class Trajectory():
     def __init__(self, name, times):
         self.name = name
