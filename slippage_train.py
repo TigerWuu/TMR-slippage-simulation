@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow import keras
+import Trajectory as T
 import DNN as nn
 
 """ 
@@ -33,22 +34,8 @@ time_step = 200
 L = 20
 
 ### reference trajectory
-t = np.arange(time_step) 
-# xr = 0.01*t 
-# yr = 0.5*np.sin(3*xr) + xr
-# vxr = 0.01*np.ones(time_step)
-# vyr = 0.015*np.cos(3*xr)+0.01
-# vr = (vxr**2 + vyr **2)**0.5
-# thetar = np.arctan2(vyr,vxr)
-# omegar = -0.045*np.sin(3*xr)/(2.25*(np.cos(3*xr))**2+3*np.cos(3*xr)+2)
-
-xr = 0.01*t 
-yr = (0.01*t) ** 2
-vxr = 0.01*np.ones(time_step)
-vyr = 0.02*(0.01*t)
-vr = (vxr**2 + vyr **2)**0.5
-thetar = np.arctan2(vyr,vxr)
-omegar = 0.02/(0.0004*t**2+1)
+trajectory = T.Trajectory("y=x^2",time_step)
+t,xr,yr,vxr,vyr,vr,thetar,omegar = trajectory.generator()
 
 ### real trajecotory
 x = np.zeros(time_step)

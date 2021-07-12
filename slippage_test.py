@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow import keras
 import matplotlib.animation as animation
+import Trajectory as T
 
 """ 
 -------------------------
@@ -43,14 +44,8 @@ time_step = 200
 L = 20
 
 ### reference trajectory
-t = np.arange(time_step) 
-xr = 1.6*np.sin(0.01*t) 
-yr = -1.6*np.cos(0.01*t)+1.6
-vxr = 0.01*1.6*np.cos(0.01*t)
-vyr = 0.01*1.6*np.sin(0.01*t)
-vr = (vxr**2 + vyr **2)**0.5
-thetar = np.arctan2(vyr,vxr)
-omegar = 0.01*np.ones(time_step)
+trajectory = T.Trajectory("circle",time_step)
+t,xr,yr,vxr,vyr,vr,thetar,omegar = trajectory.generator()
 
 ### real trajecotory
 x = np.zeros(time_step)
@@ -417,19 +412,17 @@ if __name__ == "__main__":
     if online == True:
         if ra != 1:
             plt.legend([reference_concrete, reference_soil, car, car_com, car_com_online,], ['Desired trajectory concrete', 'Desired trajectory soil', 'Trajectory without slip com', 'Trajectory slip com offline' , 'Trajectory slip com online' ], loc='upper left')
-            # save gif
-            ani.save('Tracking compare ra online.gif', writer='imagemagick', fps=50)
+            name = 'Tracking compare ra online.gif'
         else:
             plt.legend([reference, car, car_com, car_com_online,], ['Desired trajectory concrete', 'Trajectory without slip com', 'Trajectory slip com offline', 'Trajectory slip com online' ], loc='upper left')
-            # save gif    
-            ani.save('Tracking compare online.gif', writer='imagemagick', fps=50)
+            name = 'Tracking compare online.gif'
     else:
         if ra != 1:
             plt.legend([reference_concrete, reference_soil, car, car_com, ], ['Desired trajectory concrete', 'Desired trajectory soil', 'Trajectory without slip com', 'Trajectory slip com offline' ], loc='upper left')
-            # save gif
-            ani.save('Tracking compare ra.gif', writer='imagemagick', fps=50)
+            name = 'Tracking compare ra.gif'
         else:
-            plt.legend([reference, car, car_com, ], ['Desired trajectory concrete', 'Trajectory without slip com', 'Trajectory slip com offline'], loc='upper left')
-            # save gif    
-            ani.save('Tracking compare.gif', writer='imagemagick', fps=50)
+            plt.legend([reference, car, car_com, ], ['Desired trajectory concrete', 'Trajectory without slip com', 'Trajectory slip com offline'], loc='upper left')    
+            name = 'Tracking compare.gif'
+    # save gif
+    # ani.save(name, writer='imagemagick', fps=50)
     plt.show()
