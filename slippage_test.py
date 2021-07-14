@@ -2,6 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow import keras
 import matplotlib.animation as animation
+import threading
+import multiprocessing as mp
+import time
+
 import Trajectory as T
 
 """ 
@@ -35,6 +39,11 @@ Instruction:
     4. "online" can switch the training status
         # online = True ---> online & offline
         # online = False ---> offline only
+
+    5. Multithread.
+        # multithread = True : about 43s
+        # multithread = False : about 50s  
+         
 """
 
 ### simulation step
@@ -52,7 +61,7 @@ x = np.zeros(time_step)
 y = np.zeros(time_step)
 vx = np.zeros(time_step)
 vy = np.zeros(time_step)
-v = np.zeros(time_step) 
+# v = np.zeros(time_step) 
 theta = np.zeros(time_step)
 omega = np.zeros(time_step)
 wl = np.zeros(time_step)
@@ -61,38 +70,81 @@ s1 = np.zeros(time_step)
 s2 = np.zeros(time_step)
 
 ### real trajectory after slippage compensation 
-
-wlp = np.zeros(time_step)
-wrp = np.zeros(time_step)
-
-s1p = np.zeros(time_step)
-s2p = np.zeros(time_step)
-
 xp = np.zeros(time_step)
 yp = np.zeros(time_step)
 vxp = np.zeros(time_step)
 vyp = np.zeros(time_step)
+
 thetap = np.zeros(time_step)
 omegap = np.zeros(time_step)
+wlp = np.zeros(time_step)
+wrp = np.zeros(time_step)
+s1p = np.zeros(time_step)
+s2p = np.zeros(time_step)
+
+s1pt = np.zeros(time_step)
+s2pt = np.zeros(time_step)
+
+### real trajectory after slippage compensation online
+xpo = np.zeros(time_step)
+ypo = np.zeros(time_step)
+vxpo = np.zeros(time_step)
+vypo = np.zeros(time_step)
+
+thetapo = np.zeros(time_step)
+omegapo = np.zeros(time_step)
+wlpo = np.zeros(time_step)
+wrpo = np.zeros(time_step)
+s1po = np.zeros(time_step)
+s2po = np.zeros(time_step)
+
+s1pot = np.zeros(time_step)
+s2pot = np.zeros(time_step)
 
 ### controller output
-vc = np.zeros(time_step)
-omegac = np.zeros(time_step)
-wrr = np.zeros(time_step)
-wlr = np.zeros(time_step)
-wrr_dot = np.zeros(time_step)
-wlr_dot = np.zeros(time_step)
+vc = 0
+vcp = 0
+vcpo = 0
+omegac = 0
+omegacp = 0
+omegacpo = 0
+
+wrc = np.zeros(time_step)
+wlc = np.zeros(time_step)
+wrcp = np.zeros(time_step)
+wlcp = np.zeros(time_step)
+wrcpo = np.zeros(time_step)
+wlcpo = np.zeros(time_step)
+
+wrc_dot = np.zeros(time_step)
+wlc_dot = np.zeros(time_step)
+wrcp_dot = np.zeros(time_step)
+wlcp_dot = np.zeros(time_step)
+wrcpo_dot = np.zeros(time_step)
+wlcpo_dot = np.zeros(time_step)
 
 ### error & error gain
 e1 = np.zeros(time_step)
 e2 = np.zeros(time_step)
 e3 = np.zeros(time_step)
+e1p = np.zeros(time_step)
+e2p = np.zeros(time_step)
+e3p = np.zeros(time_step)
+e1po = np.zeros(time_step)
+e2po = np.zeros(time_step)
+e3po = np.zeros(time_step)
+
 k1 = 0
 k2 = 0
 k3 = 0
+k1p = 0
+k2p = 0
+k3p = 0
+k1po = 0
+k2po = 0
+k3po = 0
 
 ### initial condition
-
 x0 = 0.1
 y0 = -0.1
 theta0 = 1/4*np.pi
@@ -103,272 +155,221 @@ ra = 1.3
 ### online/offline
 online = True
 
+### multithread on/off
+multithread = True
+
+
+### load the Network
+def load_network():
+    slippage = keras.models.load_model("slippage_predict")
+    return slippage
+
+### slippage ratio empirical equation
+def slippage_empirical(lv,rv,i):
+    global time_step, ra
+    alpha_b = -0.15
+    beta_b = -0.63
+    alpha_s = 0.07
+    beta_s = -0.68
+    if lv >= rv:
+        R =  0.5*L*(lv+rv)/(lv-rv)
+        alphal = alpha_b
+        betal = beta_b
+        alphar = alpha_s
+        betar = beta_s
+    else:
+        R =  0.5*L*(lv+rv)/(rv-lv)
+        alphal = alpha_s
+        betal = beta_s
+        alphar = alpha_b
+        betar = beta_b
+    if R>0:
+        if i < time_step/3:
+            i1 = alphal*np.exp(betal*R)
+            i2 = alphar*np.exp(betar*R)
+        else:
+            i1 = ra*alphal*np.exp(betal*R)
+            i2 = ra*alphar*np.exp(betar*R)
+    else:
+        i1 = 0
+        i2 = 0
+    return i1,i2
 ### without slippage compensation
-for i in range(time_step):
-    if thetar[i] < 0:
-        thetar[i] += 2*np.pi
-    if i == 0:
-        e1[i] = xr[i]
-        e2[i] = yr[i]
-        e3[i] = thetar[i]
-    else:
-        e1[i] = xr[i] - x[i-1]
-        e2[i] = yr[i] - y[i-1]
-        e3[i] = thetar[i] - theta[i-1]
-
-    k1 = 2 * (omegar[i]**2 + 14*vr[i]**2)**0.5
-    k2 = 14*np.abs(vr[i])
-    k3 = k1
-
-    ### state feedback & feedforward controller
-    vc[i] = vr[i]*np.cos(e3[i]) + k1*e1[i]
-    omegac[i] = omegar[i] + k2*np.sign(vr[i])*e2[i] + k3*e3[i]
-
-    ###　inverse kinematic
-    wlr[i] = vc[i]*(1/(1-s1[i])) - omegac[i]*L/(2*(1-s1[i]))
-    wrr[i] = vc[i]*(1/(1-s2[i])) + omegac[i]*L/(2*(1-s2[i]))
-    if i == 0:
-        wlr_dot[i] = wlr[i]
-        wrr_dot[i] = wrr[i]
-    else:
-        wlr_dot[i] = wlr[i] - wlr[i-1]
-        wrr_dot[i] = wrr[i] - wrr[i-1]
-
-    # slippage ratio empirical equation
-    alpha_b = -0.15
-    beta_b = -0.63
-    alpha_s = 0.07
-    beta_s = -0.68
-
-    if wlr[i] >= wrr[i]:
-        R =  0.5*L*(wlr[i]+wrr[i])/(wlr[i]-wrr[i])
-        alphal = alpha_b
-        betal = beta_b
-        alphar = alpha_s
-        betar = beta_s
-    else:
-        R =  0.5*L*(wlr[i]+wrr[i])/(wrr[i]-wlr[i])
-        alphal = alpha_s
-        betal = beta_s
-        alphar = alpha_b
-        betar = beta_b
-    if R>0:
-        if i < time_step/3:
-            s1[i] = alphal*np.exp(betal*R)
-            s2[i] = alphar*np.exp(betar*R)
-        else:
-            s1[i] = ra*alphal*np.exp(betal*R)
-            s2[i] = ra*alphar*np.exp(betar*R)
-    else:
-        s1[i] = 0
-        s2[i] = 0
-
-    ###　forward kinematic
-    wl[i] = wlr[i]*(1-s1[i])
-    wr[i] = wrr[i]*(1-s2[i])
-    omega[i] = 1/L*wr[i] - 1/L*wl[i] #ccw > 0
-    if  i == 0 :
-        x[0] = x0
-        y[0] = y0
-        theta[0] =theta0
-    else:
-        x[i] += x[i-1] + vx[i-1]
-        y[i] += y[i-1] + vy[i-1] 
-        theta[i] = theta[i-1] + omega[i]
-    vx[i] = 1/2*(np.cos(theta[i])*wl[i]+ np.cos(theta[i])*wr[i])
-    vy[i] = 1/2*(np.sin(theta[i])*wl[i]+ np.sin(theta[i])*wr[i])
-    v[i] = (vx[i]**2 + vy[i]**2)**0.5
-
-### load the Network
-slippage = keras.models.load_model("slippage_predict")
-### load the Network
-
-### with slippage compensation
-for i in range(time_step):
-    if i == 0:
-        s1p[i] = 0
-        s2p[i] = 0
-        e1[i] = xr[i] - xp[i]
-        e2[i] = yr[i] - yp[i]
-        e3[i] = thetar[i] - thetap[i]
-    else:
-        
-        x_online = [[wrr[i-1],wlr[i-1],wrr_dot[i-1],wlr_dot[i-1],wrp[i-1],wlp[i-1]]]
-        sp = slippage.predict(x_online) 
-        s1p[i] = sp[0][0]
-        s2p[i] = sp[0][1]
-        e1[i] = xr[i] - xp[i-1]
-        e2[i] = yr[i] - yp[i-1]
-        e3[i] = thetar[i] - thetap[i-1]
-
-    k1 = 2 * (omegar[i]**2 + 14*vr[i]**2)**0.5
-    k2 = 14*np.abs(vr[i])
-    k3 = k1
-
-    ### state feedback & feedforward controller
-    vc[i] = vr[i]*np.cos(e3[i]) + k1*e1[i]
-    omegac[i] = omegar[i] + k2*np.sign(vr[i])*e2[i] + k3*e3[i]
-
-    ###　inverse kinematic
-    wlr[i] = vc[i]*(1/(1-s1p[i])) - omegac[i]*L/(2*(1-s1p[i]))
-    wrr[i] = vc[i]*(1/(1-s2p[i])) + omegac[i]*L/(2*(1-s2p[i]))
-
-    # slippage ratio empirical equation
-    alpha_b = -0.15
-    beta_b = -0.63
-    alpha_s = 0.07
-    beta_s = -0.68
-
-    if wlr[i] >= wrr[i]:
-        R =  0.5*L*(wlr[i]+wrr[i])/(wlr[i]-wrr[i])
-        alphal = alpha_b
-        betal = beta_b
-        alphar = alpha_s
-        betar = beta_s
-    else:
-        R =  0.5*L*(wlr[i]+wrr[i])/(wrr[i]-wlr[i])
-        alphal = alpha_s
-        betal = beta_s
-        alphar = alpha_b
-        betar = beta_b
-    if R>0:
-        if i < time_step/3:
-            s1[i] = alphal*np.exp(betal*R)
-            s2[i] = alphar*np.exp(betar*R)
-        else:
-            s1[i] = ra*alphal*np.exp(betal*R)
-            s2[i] = ra*alphar*np.exp(betar*R)
-    else:
-        s1[i] = 0
-        s2[i] = 0
-
-    ### forward kinematic
-    wlp[i] = wlr[i]*(1-s1[i])
-    wrp[i] = wrr[i]*(1-s2[i])
-    omegap[i] = 1/L*wrp[i] - 1/L*wlp[i] 
-
-    if i == 0:
-        wrr_dot[i] = wrr[i]
-        wlr_dot[i] = wlr[i]
-        xp[0] = x0
-        yp[0] = y0
-        thetap[0] =theta0
-    else:
-        wrr_dot[i] = wrr[i] - wrr[i-1]
-        wlr_dot[i] = wlr[i] - wlr[i-1]
-
-        xp[i] += xp[i-1] + vxp[i-1]
-        yp[i] += yp[i-1] + vyp[i-1] 
-        thetap[i] = thetap[i-1] + omegap[i]
-
-    vxp[i] = 1/2*(np.cos(thetap[i])*wlp[i]+ np.cos(thetap[i])*wrp[i])
-    vyp[i] = 1/2*(np.sin(thetap[i])*wlp[i]+ np.sin(thetap[i])*wrp[i])
-
-
-xpo = np.zeros(time_step)
-ypo = np.zeros(time_step)
-s1po = np.zeros(time_step)
-s2po = np.zeros(time_step)
-s1o = np.zeros(time_step)
-s2o = np.zeros(time_step)
-
-### with slippage compensation online
-if online == True:
+def without_compensation():
     for i in range(time_step):
+        if thetar[i] < 0:
+            thetar[i] += 2*np.pi
         if i == 0:
-            s1po[i] = 0
-            s2po[i] = 0
-            e1[i] = xr[i] - xpo[i]
-            e2[i] = yr[i] - ypo[i]
-            e3[i] = thetar[i] - thetap[i]
+            e1[i] = xr[i]
+            e2[i] = yr[i]
+            e3[i] = thetar[i]
         else:
-            
-            x_online = [[wrr[i-1],wlr[i-1],wrr_dot[i-1],wlr_dot[i-1],wrp[i-1],wlp[i-1]]]
-            y_online = [[s1[i-1],s2[i-1]]]
-            slippage.fit(x_online , y_online , epochs=3 ,batch_size = 1)
-            sp = slippage.predict(x_online) 
-            s1po[i] = sp[0][0]
-            s2po[i] = sp[0][1]
-            e1[i] = xr[i] - xpo[i-1]
-            e2[i] = yr[i] - ypo[i-1]
-            e3[i] = thetar[i] - thetap[i-1]
+            e1[i] = xr[i] - x[i-1]
+            e2[i] = yr[i] - y[i-1]
+            e3[i] = thetar[i] - theta[i-1]
 
         k1 = 2 * (omegar[i]**2 + 14*vr[i]**2)**0.5
         k2 = 14*np.abs(vr[i])
         k3 = k1
 
         ### state feedback & feedforward controller
-        vc[i] = vr[i]*np.cos(e3[i]) + k1*e1[i]
-        omegac[i] = omegar[i] + k2*np.sign(vr[i])*e2[i] + k3*e3[i]
+        vc = vr[i]*np.cos(e3[i]) + k1*e1[i]
+        omegac = omegar[i] + k2*np.sign(vr[i])*e2[i] + k3*e3[i]
 
         ###　inverse kinematic
-        wlr[i] = vc[i]*(1/(1-s1po[i])) - omegac[i]*L/(2*(1-s1po[i]))
-        wrr[i] = vc[i]*(1/(1-s2po[i])) + omegac[i]*L/(2*(1-s2po[i]))
+        wlc[i] = vc*(1/(1-s1[i])) - omegac*L/(2*(1-s1[i]))
+        wrc[i] = vc*(1/(1-s2[i])) + omegac*L/(2*(1-s2[i]))
+        if i == 0:
+            wlc_dot[i] = wlc[i]
+            wrc_dot[i] = wrc[i]
+        else:
+            wlc_dot[i] = wlc[i] - wlc[i-1]
+            wrc_dot[i] = wrc[i] - wrc[i-1]
 
         # slippage ratio empirical equation
-        alpha_b = -0.15
-        beta_b = -0.63
-        alpha_s = 0.07
-        beta_s = -0.68
+        s1[i],s2[i] = slippage_empirical(wlc[i],wrc[i],i)
 
-        if wlr[i] >= wrr[i]:
-            R =  0.5*L*(wlr[i]+wrr[i])/(wlr[i]-wrr[i])
-            alphal = alpha_b
-            betal = beta_b
-            alphar = alpha_s
-            betar = beta_s
+        ###　forward kinematic
+        wl[i] = wlc[i]*(1-s1[i])
+        wr[i] = wrc[i]*(1-s2[i])
+        omega[i] = 1/L*wr[i] - 1/L*wl[i] #ccw > 0
+        if  i == 0 :
+            x[0] = x0
+            y[0] = y0
+            theta[0] =theta0
         else:
-            R =  0.5*L*(wlr[i]+wrr[i])/(wrr[i]-wlr[i])
-            alphal = alpha_s
-            betal = beta_s
-            alphar = alpha_b
-            betar = beta_b
-        if R>0:
-            if i < time_step/3:
-                s1o[i] = alphal*np.exp(betal*R)
-                s2o[i] = alphar*np.exp(betar*R)
-            else:
-                s1o[i] = ra*alphal*np.exp(betal*R)
-                s2o[i] = ra*alphar*np.exp(betar*R)
+            x[i] += x[i-1] + vx[i-1]
+            y[i] += y[i-1] + vy[i-1] 
+            theta[i] = theta[i-1] + omega[i]
+        vx[i] = 1/2*(np.cos(theta[i])*wl[i]+ np.cos(theta[i])*wr[i])
+        vy[i] = 1/2*(np.sin(theta[i])*wl[i]+ np.sin(theta[i])*wr[i])
+        # v[i] = (vx[i]**2 + vy[i]**2)**0.5
+
+def with_compensation():
+    global time_step, ra
+    ### load the Network
+    slippage = load_network()
+   
+    ### with slippage compensation
+    for i in range(time_step):
+        if thetar[i] < 0:
+            thetar[i] += 2*np.pi
+        if i == 0:
+            s1p[i] = 0
+            s2p[i] = 0
+            e1p[i] = xr[i] - xp[i]
+            e2p[i] = yr[i] - yp[i]
+            e3p[i] = thetar[i] - thetap[i]
         else:
-            s1[i] = 0
-            s2[i] = 0
+            x_online = [[wrcp[i-1],wlcp[i-1],wrcp_dot[i-1],wlcp_dot[i-1],wrp[i-1],wlp[i-1]]]
+            sp = slippage.predict(x_online) 
+            s1p[i] = sp[0][0]
+            s2p[i] = sp[0][1]
+            e1p[i] = xr[i] - xp[i-1]
+            e2p[i] = yr[i] - yp[i-1]
+            e3p[i] = thetar[i] - thetap[i-1]
+
+        k1p = 2 * (omegar[i]**2 + 14*vr[i]**2)**0.5
+        k2p = 14*np.abs(vr[i])
+        k3p = k1p
+
+        ### state feedback & feedforward controller
+        vcp = vr[i]*np.cos(e3p[i]) + k1p*e1p[i]
+        omegacp = omegar[i] + k2p*np.sign(vr[i])*e2p[i] + k3p*e3p[i]
+
+        ###　inverse kinematic
+        wlcp[i] = vcp*(1/(1-s1p[i])) - omegacp*L/(2*(1-s1p[i]))
+        wrcp[i] = vcp*(1/(1-s2p[i])) + omegacp*L/(2*(1-s2p[i]))
+
+        # slippage ratio empirical equation
+        s1pt[i],s2pt[i] = slippage_empirical(wlcp[i],wrcp[i],i)
 
         ### forward kinematic
-        wlp[i] = wlr[i]*(1-s1o[i])
-        wrp[i] = wrr[i]*(1-s2o[i])
+        wlp[i] = wlcp[i]*(1-s1pt[i])
+        wrp[i] = wrcp[i]*(1-s2pt[i])
         omegap[i] = 1/L*wrp[i] - 1/L*wlp[i] 
 
         if i == 0:
-            wrr_dot[i] = wrr[i]
-            wlr_dot[i] = wlr[i]
-            xpo[0] = x0
-            ypo[0] = y0
+            wrcp_dot[i] = wrcp[i]
+            wlcp_dot[i] = wlcp[i]
+            xp[0] = x0
+            yp[0] = y0
             thetap[0] =theta0
         else:
-            wrr_dot[i] = wrr[i] - wrr[i-1]
-            wlr_dot[i] = wlr[i] - wlr[i-1]
+            wrcp_dot[i] = wrcp[i] - wrcp[i-1]
+            wlcp_dot[i] = wlcp[i] - wlcp[i-1]
 
-            xpo[i] += xpo[i-1] + vxp[i-1]
-            ypo[i] += ypo[i-1] + vyp[i-1] 
+            xp[i] += xp[i-1] + vxp[i-1]
+            yp[i] += yp[i-1] + vyp[i-1] 
             thetap[i] = thetap[i-1] + omegap[i]
 
         vxp[i] = 1/2*(np.cos(thetap[i])*wlp[i]+ np.cos(thetap[i])*wrp[i])
         vyp[i] = 1/2*(np.sin(thetap[i])*wlp[i]+ np.sin(thetap[i])*wrp[i])
 
-# plt.plot(s1-s1p, color = 'blue')
-# plt.plot(s2-s2p, color = 'green')
-# plt.ylim(-1,1)
-# plt.legend(['slippage left error', 'slippage right error'], loc='upper left')
-# plt.title("slippage ratio error")
-# plt.show()
-# plt.figure()
-# plt.plot(s1o-s1po, color = 'blue')
-# plt.plot(s2o-s2po, color = 'green')
-# plt.ylim(-1,1)
-# plt.legend(['slippage left error online', 'slippage right error online'], loc='upper left')
-# plt.title("slippage ratio error online")
-# plt.show()
+def with_compensation_online():
+    global time_step, ra
+    ### load the Network
+    slippage = load_network()
+
+    ### with slippage compensation online
+    if online == True:
+        for i in range(time_step):
+            if thetar[i] < 0:
+                thetar[i] += 2*np.pi
+            if i == 0:
+                s1po[i] = 0
+                s2po[i] = 0
+                e1po[i] = xr[i] - xpo[i]
+                e2po[i] = yr[i] - ypo[i]
+                e3po[i] = thetar[i] - thetapo[i]
+            else:
+                
+                x_online = [[wrcpo[i-1],wlcpo[i-1],wrcpo_dot[i-1],wlcpo_dot[i-1],wrpo[i-1],wlpo[i-1]]]
+                y_online = [[s1pot[i-1],s2pot[i-1]]]
+                slippage.fit(x_online , y_online , epochs=3 ,batch_size = 1)
+                spo = slippage.predict(x_online) 
+                s1po[i] = spo[0][0]
+                s2po[i] = spo[0][1]
+                e1po[i] = xr[i] - xpo[i-1]
+                e2po[i] = yr[i] - ypo[i-1]
+                e3po[i] = thetar[i] - thetapo[i-1]
+
+            k1po = 2 * (omegar[i]**2 + 14*vr[i]**2)**0.5
+            k2po = 14*np.abs(vr[i])
+            k3po = k1po
+
+            ### state feedback & feedforward controller
+            vcpo = vr[i]*np.cos(e3po[i]) + k1po*e1po[i]
+            omegacpo = omegar[i] + k2po*np.sign(vr[i])*e2po[i] + k3po*e3po[i]
+
+            ###　inverse kinematic
+            wlcpo[i] = vcpo*(1/(1-s1po[i])) - omegacpo*L/(2*(1-s1po[i]))
+            wrcpo[i] = vcpo*(1/(1-s2po[i])) + omegacpo*L/(2*(1-s2po[i]))
+
+            # slippage ratio empirical equation
+            s1pot[i],s2pot[i] = slippage_empirical(wlcpo[i],wrcpo[i],i)
+
+            ### forward kinematic
+            wlpo[i] = wlcpo[i]*(1-s1pot[i])
+            wrpo[i] = wrcpo[i]*(1-s2pot[i])
+            omegapo[i] = 1/L*wrpo[i] - 1/L*wlpo[i] 
+
+            if i == 0:
+                wrcpo_dot[i] = wrcpo[i]
+                wlcpo_dot[i] = wlcpo[i]
+                xpo[0] = x0
+                ypo[0] = y0
+                thetapo[0] =theta0
+            else:
+                wrcpo_dot[i] = wrcpo[i] - wrcpo[i-1]
+                wlcpo_dot[i] = wlcpo[i] - wlcpo[i-1]
+
+                xpo[i] += xpo[i-1] + vxpo[i-1]
+                ypo[i] += ypo[i-1] + vypo[i-1] 
+                thetapo[i] = thetapo[i-1] + omegapo[i]
+
+            vxpo[i] = 1/2*(np.cos(thetapo[i])*wlpo[i]+ np.cos(thetapo[i])*wrpo[i])
+            vypo[i] = 1/2*(np.sin(thetapo[i])*wlpo[i]+ np.sin(thetapo[i])*wrpo[i])
 
 def anima(i):
     car.set_data(x[0:i],y[0:i])
@@ -384,6 +385,26 @@ def anima(i):
 
 
 if __name__ == "__main__":
+    # run simulation
+    sta = time.time()
+
+    # multithread on/off
+    if multithread == True:
+        thread = []
+        thread.append(threading.Thread(target = without_compensation))
+        thread.append(threading.Thread(target = with_compensation))
+        thread.append(threading.Thread(target = with_compensation_online))
+        for i in thread:
+            i.start()
+        for i in thread:
+            i.join()
+    else:
+        without_compensation()
+        with_compensation()
+        with_compensation_online()
+    finish = time.time()
+    print("time = ",finish-sta)
+
     N = time_step
     fig = plt.figure(figsize=(6, 6), dpi=100)
     ax = fig.gca()
