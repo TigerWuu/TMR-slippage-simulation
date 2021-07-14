@@ -9,7 +9,6 @@ This is a simulation of TMR robot system with slippage compensation
 - [Usage](#Usage)
   - [slippage train.py](#slippage-train.py)
   - [slippage test.py](#slippage-test.py)
-  - [slippage multithread.py](#slippage-multithread.py)
   - [Trajectory.py](#Trajectory.py)
   - [DNN.py](#DNN.py)
 
@@ -57,10 +56,11 @@ We make the robot track the trajectory we desired while the influence of the sli
 
       # online = True ---> online & offline
       # online = False ---> offline only
-      
-### slippage multithread.py
-Adding threading function
-
+- Multithread
+  
+      # multithread = True ----> run four simulation with four threads at the same time. 
+      # multithread = False ----> run four simulaiotn one by one.
+ 
 ### Trajectory.py
 A class which can generate various trajectory 
 
